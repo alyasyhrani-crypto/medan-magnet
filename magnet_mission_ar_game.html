@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MAGNET MISSION – Rescue the Metal | Game AR Fisika</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            900: '#134e4a',
+                        },
+                        cyanGlow: '#00f3ff',
+                        amberGlow: '#ffb700',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- FontAwesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Three.js (3D AR Engine) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Chart.js (Physics Multi-Representation) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Tone.js (Sci-Fi Audio Feedback) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        /* Custom UI Enhancements */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card {
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+        }
+
+        .glow-amber {
+            box-shadow: 0 0 15px rgba(255, 183, 0, 0.35);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.4);
+            border-radius: 4px;
+        }
+
+        /* AR Video Overlay simulated styling */
+        #ar-canvas-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            border-radius: 1rem;
+        }
+
+        #webcam-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+            display: none;
+        }
+
+        #three-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        /* Pulse animations */
+        @keyframes scanPulse {
+            0% { border-color: rgba(0, 243, 255, 0.3); box-shadow: inset 0 0 10px rgba(0,243,255,0.2); }
+            50% { border-color: rgba(0, 243, 255, 0.8); box-shadow: inset 0 0 25px rgba(0,243,255,0.5); }
+            100% { border-color: rgba(0, 243, 255, 0.3); box-shadow: inset 0 0 10px rgba(0,243,255,0.2); }
+        }
+
+        .ar-hud-frame {
+            animation: scanPulse 3s infinite ease-in-out;
+        }
+
+        @media print {
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .lkpd-container {
+                border: none !important;
+                background: white !important;
+                color: black !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between select-none">
+
+    <!-- TOP NAVIGATION & STATUS BAR -->
+    <header class="glass-panel sticky top-0 z-40 px-4 py-3 border-b border-gray-800 no-print">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <!-- Brand & Creator -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg glow-cyan">
+                    <i class="fa-solid fa-magnet text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-extrabold tracking-wide bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400">
+                        MAGNET MISSION
+                    </h1>
+                    <p class="text-xs text-gray-400 flex items-center gap-2">
+                        <span>Rescue the Metal</span> • <span class="text-cyan-400">Pembuat: Alya Syahrani</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Game Stats / XP / Badge / Controls -->
+            <div class="flex items-center space-x-4">
+                <!-- Level Badge -->
+                <div class="flex items-center bg-gray-900/80 px-3 py-1.5 rounded-lg border border-cyan-500/30">
+                    <i class="fa-solid fa-award text-amber-400 mr-2 text-base"></i>
+                    <div>
+                        <div class="text-[10px] text-gray-400 uppercase font-semibold tracking-wider">Pangkat</div>
+                        <div id="player-rank" class="text-xs font-bold text-cyan-300">Junior Engineer</div>
+                    </div>
+                </div>
+
+                <!-- XP Meter -->
+                <div class="flex items-center bg-gray-900/80 px-3 py-1.5 rounded-lg border border-teal-500/30">
+                    <i class="fa-solid fa-bolt text-yellow-400 mr-2 text-base animate-pulse"></i>
+                    <div>
+                        <div class="text-[10px] text-gray-400 uppercase font-semibold tracking-wider">Pengalaman</div>
+                        <div class="flex items-center gap-1.5">
+                            <span id="player-xp" class="text-xs font-bold text-yellow-300">0</span>
+                            <span class="text-[10px] text-gray-500">XP</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Camera AR Toggle -->
+                <button id="toggle-webcam-btn" onclick="toggleWebcam()" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-xs font-semibold text-gray-200 transition flex items-center gap-2">
+                    <i class="fa-solid fa-camera text-cyan-400"></i>
+                    <span id="webcam-btn-text" class="hidden sm:inline">Kamera AR</span>
+                </button>
+
+                <!-- LKPD Digital Button -->
+                <button onclick="openLkpdModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600/80 hover:bg-indigo-500 border border-indigo-400/50 text-xs font-semibold text-white transition flex items-center gap-2 glow-cyan">
+                    <i class="fa-solid fa-file-invoice text-indigo-200"></i>
+                    <span>LKPD Digital</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-6 no-print">
+
+        <!-- LEFT COLUMN: 3D WEB AR VIEWPORT & HUD (7 COLS) -->
+        <section class="lg:col-span-7 flex flex-col space-y-4">
+            
+            <!-- Web AR Viewport Box -->
+            <div class="relative w-full h-[380px] sm:h-[460px] lg:h-[520px] rounded-2xl glass-panel overflow-hidden border border-cyan-500/30 ar-hud-frame shadow-2xl">
+                
+                <!-- WebAR Container -->
+                <div id="ar-canvas-container">
+                    <video id="webcam-video" autoplay playsinline muted></video>
+                    <canvas id="three-canvas"></canvas>
+                </div>
+
+                <!-- HUD Overlay Graphics -->
+                <div class="absolute top-3 left-3 z-20 pointer-events-none flex flex-col space-y-1">
+                    <div class="bg-gray-900/80 backdrop-blur border border-cyan-500/40 px-2.5 py-1 rounded text-[11px] text-cyan-300 font-mono flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                        <span>SYSTEM MODE: <span id="ar-status-text">SIMULATED WEB-AR</span></span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 font-mono">3D Interactive Vector Engine v2.6</div>
+                </div>
+
+                <!-- Floating Sensor Readings HUD -->
+                <div class="absolute bottom-4 left-4 z-20 bg-gray-900/90 backdrop-blur border border-gray-700/80 rounded-xl p-3 text-xs font-mono w-56 shadow-lg">
+                    <div class="text-gray-400 text-[10px] uppercase font-bold tracking-wider mb-1 flex items-center justify-between">
+                        <span>DETEKTOR SENSOR B</span>
+                        <i class="fa-solid fa-microchip text-cyan-400"></i>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Kuat Arus (I):</span>
+                            <span id="hud-current" class="text-yellow-400 font-bold">1.0 A</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Jarak (r):</span>
+                            <span id="hud-distance" class="text-teal-300 font-bold">0.05 m</span>
+                        </div>
+                        <div class="flex justify-between border-t border-gray-800 pt-1">
+                            <span class="text-gray-300">Medan Magnet (B):</span>
+                            <span id="hud-bfield" class="text-cyan-300 font-bold">4.00 µT</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3D Navigation Hint -->
+                <div class="absolute top-3 right-3 z-20 bg-gray-900/80 px-2 py-1 rounded border border-gray-800 text-[10px] text-gray-400 font-mono">
+                    <i class="fa-solid fa-arrows-spin text-cyan-400 mr-1"></i> Putar/Zoom Objek 3D
+                </div>
+            </div>
+
+            <!-- MULTI-REPRESENTATION MATRIX UNLOCK BAR -->
+            <div class="glass-panel rounded-xl p-3 border border-gray-800 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-cubes text-cyan-400"></i> Multi-Representasi:
+                </span>
+                
+                <div class="flex items-center space-x-1 sm:space-x-2">
+                    <button id="rep-visual" class="rep-badge bg-cyan-900/40 text-cyan-300 border border-cyan-500/50 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                        <span>👁️ Visual</span> <i class="fa-solid fa-check text-[10px] text-green-400"></i>
+                    </button>
+                    <button id="rep-data" class="rep-badge opacity-50 bg-gray-800 text-gray-400 border border-gray-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                        <span>📊 Data</span> <i class="fa-solid fa-lock text-[10px]"></i>
+                    </button>
+                    <button id="rep-graph" class="rep-badge opacity-50 bg-gray-800 text-gray-400 border border-gray-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                        <span>📈 Grafik</span> <i class="fa-solid fa-lock text-[10px]"></i>
+                    </button>
+                    <button id="rep-formula" class="rep-badge opacity-50 bg-gray-800 text-gray-400 border border-gray-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                        <span>🧮 Formula</span> <i class="fa-solid fa-lock text-[10px]"></i>
+                    </button>
+                    <button id="rep-explain" class="rep-badge opacity-50 bg-gray-800 text-gray-400 border border-gray-700 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition">
+                        <span>💬 Verbal</span> <i class="fa-solid fa-lock text-[10px]"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- GRAPH / DATA VISUALIZER PANEL (DYNAMIC MULTI-REP DISPLAY) -->
+            <div id="multi-rep-panel" class="glass-panel rounded-xl p-4 border border-gray-800 min-h-[180px]">
+                <!-- Interactive Chart & Representation dynamic content will render here -->
+                <div class="flex items-center justify-between mb-2">
+                    <h3 id="multi-rep-title" class="text-sm font-bold text-cyan-300 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line"></i> Dashboard Analytics Multi-Representasi
+                    </h3>
+                    <span id="rep-status-tag" class="text-[10px] bg-cyan-900/60 text-cyan-300 px-2 py-0.5 rounded border border-cyan-500/30 font-mono">MISI 1</span>
+                </div>
+                <div id="multi-rep-content" class="text-xs text-gray-300">
+                    <!-- Dynamic insertion based on active mission and unlocked representations -->
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT COLUMN: MISSION CONTROLLER & GAMEPLAY (5 COLS) -->
+        <section class="lg:col-span-5 flex flex-col space-y-4">
+            
+            <!-- MISSION CONTROL PANEL -->
+            <div class="glass-panel rounded-2xl p-5 border border-cyan-500/20 shadow-xl flex-1 flex flex-col justify-between">
+                
+                <div>
+                    <!-- Mission Progress Header -->
+                    <div class="flex items-center justify-between pb-3 border-b border-gray-800 mb-4">
+                        <div>
+                            <span class="text-[10px] font-mono uppercase tracking-widest text-cyan-400 block">STASIUN KONTROL PUSAT</span>
+                            <h2 id="mission-title" class="text-base font-extrabold text-white flex items-center gap-2">
+                                🔎 MISI 1: SCAN THE MAGNETIC FIELD
+                            </h2>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-gray-400 block font-mono">PROGRESS</span>
+                            <span id="mission-step-indicator" class="text-xs font-bold text-amber-400 font-mono">MISI 1/6</span>
+                        </div>
+                    </div>
+
+                    <!-- Story & Problem Prompt Box -->
+                    <div id="story-prompt-box" class="bg-gray-900/90 rounded-xl p-3.5 border border-indigo-500/30 text-xs leading-relaxed text-gray-200 mb-4 shadow-inner">
+                        <!-- Dynamic Story text inserted via JavaScript -->
+                    </div>
+
+                    <!-- INTERACTIVE MISSION GAMEPLAY WORKSPACE -->
+                    <div id="gameplay-workspace" class="space-y-4">
+                        <!-- Dynamic Controls and Interactivity dynamically rendered per Mission -->
+                    </div>
+                </div>
+
+                <!-- ACTION & NEXT MISSION BAR -->
+                <div class="pt-4 border-t border-gray-800 mt-6 space-y-2">
+                    <div id="feedback-alert" class="hidden p-3 rounded-lg text-xs font-medium border">
+                        <!-- Feedback text -->
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button id="hint-btn" onclick="showHintModal()" class="px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 text-xs font-semibold flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-lightbulb text-yellow-400"></i>
+                            <span>Petunjuk</span>
+                        </button>
+                        <button id="primary-action-btn" onclick="handlePrimaryAction()" class="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs tracking-wide shadow-lg glow-cyan flex items-center justify-center gap-2 transition">
+                            <span>SCAN FIELD</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- LKPD DIGITAL MODAL DRAWER -->
+    <div id="lkpd-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-4xl max-h-[90vh] rounded-2xl border border-indigo-500/40 shadow-2xl flex flex-col overflow-hidden lkpd-container">
+            <!-- Modal Header -->
+            <div class="p-4 bg-gray-900 border-b border-gray-800 flex items-center justify-between no-print">
+                <div class="flex items-center space-x-3">
+                    <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                        <i class="fa-solid fa-file-signature"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-white">LEMBAR KERJA PESERTA DIDIK (LKPD) DIGITAL</h2>
+                        <p class="text-xs text-indigo-300">Materi Medan Magnet SMA Fase F • Guided Deep Learning</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="window.print()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-print"></i> Cetak / Export PDF
+                    </button>
+                    <button onclick="closeLkpdModal()" class="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs">
+                        <i class="fa-solid fa-xmark text-base"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal Body (Printable LKPD) -->
+            <div class="p-6 overflow-y-auto custom-scrollbar space-y-6 text-sm text-gray-200">
+                
+                <!-- LKPD Header Identity -->
+                <div class="border-b border-gray-700 pb-4 flex flex-wrap justify-between gap-4">
+                    <div class="space-y-1">
+                        <p><strong class="text-cyan-400">Mata Pelajaran:</strong> Fisika (SMA Fase F)</p>
+                        <p><strong class="text-cyan-400">Materi:</strong> Medan Magnet pada Kawat Lurus & Solenoida</p>
+                        <p><strong class="text-cyan-400">Pengembang Game:</strong> Alya Syahrani</p>
+                    </div>
+                    <div class="bg-gray-800/80 p-3 rounded-lg border border-gray-700 min-w-[220px]">
+                        <p><strong class="text-amber-400">Nama Siswa:</strong> <span id="lkpd-student-name">Magnet Engineer</span></p>
+                        <p><strong class="text-amber-400">Tanggal:</strong> <span id="lkpd-date">--</span></p>
+                        <p><strong class="text-amber-400">Total XP Diraih:</strong> <span id="lkpd-total-xp">0 XP</span></p>
+                    </div>
+                </div>
+
+                <!-- LKPD Mission 1 Data -->
+                <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800 space-y-2">
+                    <h3 class="font-bold text-cyan-300 text-base">MISSION 1: Deteksi Medan Magnet & Kaidah Tangan Kanan (C3)</h3>
+                    <p class="text-xs text-gray-300"><strong>Hasil Pengamatan Visual:</strong> Bentuk garis medan magnet di sekitar kawat berarus lurus adalah lingkaran-lingkaran konsentris.</p>
+                    <div class="text-xs space-y-1">
+                        <label class="block font-semibold text-gray-300">Penjelasan Hubungan Visual → Verbal (Kaidah Tangan Kanan):</label>
+                        <div id="lkpd-m1-verbal" class="p-2.5 bg-gray-950 rounded border border-gray-800 text-cyan-200 font-mono italic">
+                            Belum diisi. Selesaikan Misi 1.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LKPD Mission 2 & 3 Experimental Table -->
+                <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800 space-y-3">
+                    <h3 class="font-bold text-cyan-300 text-base">MISSION 2 & 3: Pengaruh Kuat Arus (I) dan Jarak (r) terhadap Medan Magnet B (C3-C4)</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left border-collapse border border-gray-700 font-mono">
+                            <thead>
+                                <tr class="bg-gray-800 text-cyan-300">
+                                    <th class="p-2 border border-gray-700">Percobaan</th>
+                                    <th class="p-2 border border-gray-700">Kuat Arus I (A)</th>
+                                    <th class="p-2 border border-gray-700">Jarak r (m)</th>
+                                    <th class="p-2 border border-gray-700">Medan Magnet B (Tesla)</th>
+                                    <th class="p-2 border border-gray-700">Status Target</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lkpd-table-body">
+                                <tr>
+                                    <td class="p-2 border border-gray-700">1</td>
+                                    <td class="p-2 border border-gray-700">1.0 A</td>
+                                    <td class="p-2 border border-gray-700">0.05 m</td>
+                                    <td class="p-2 border border-gray-700">4.00 µT</td>
+                                    <td class="p-2 border border-gray-700 text-yellow-400">Pengamatan Awal</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- LKPD Mission 4 & 5 Design Matrix -->
+                <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800 space-y-3">
+                    <h3 class="font-bold text-cyan-300 text-base">MISSION 5 & FINAL: Evaluasi Rancangan Elektromagnet Solenoida Crane (C5)</h3>
+                    <p class="text-xs text-gray-300">Persamaan Solenoida: <span class="font-mono text-yellow-300">B = µ₀ · (N / L) · I</span></p>
+                    <div id="lkpd-solenoid-summary" class="p-3 bg-gray-950 rounded border border-gray-800 text-xs font-mono text-cyan-200">
+                        Rancangan Belum Diselesaikan.
+                    </div>
+                </div>
+
+                <!-- LKPD Deep Learning Reflection -->
+                <div class="bg-gray-900/60 p-4 rounded-xl border border-gray-800 space-y-3">
+                    <h3 class="font-bold text-amber-300 text-base">REFLEKSI DEEP LEARNING (MEREFLEKSI & MENGAPLIKASIKAN)</h3>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">1. Apa yang terjadi pada kerapatan garis medan magnet ketika kuat arus dinaikkan?</label>
+                            <textarea id="lkpd-ref-1" rows="2" class="w-full bg-gray-950 border border-gray-700 rounded p-2 text-gray-200 focus:border-cyan-400 outline-none" placeholder="Tuliskan analisis berdasarkan grafik dan persamaan..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">2. Mengapa penambahan jumlah lilitan N dan kuat arus I dapat memperkuat daya angkat elektromagnet crane?</label>
+                            <textarea id="lkpd-ref-2" rows="2" class="w-full bg-gray-950 border border-gray-700 rounded p-2 text-gray-200 focus:border-cyan-400 outline-none" placeholder="Jelaskan hubungan matematis dan fisiknya..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block font-semibold text-gray-300 mb-1">3. Representasi mana (Visual, Tabel, Grafik, atau Formula) yang paling membantu kamu memahami konsep medan magnet?</label>
+                            <textarea id="lkpd-ref-3" rows="2" class="w-full bg-gray-950 border border-gray-700 rounded p-2 text-gray-200 focus:border-cyan-400 outline-none" placeholder="Refleksikan pengalaman belajar multi-representasi kamu..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MISSION ALERT / OPENING MODAL -->
+    <div id="intro-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="glass-panel max-w-lg w-full rounded-2xl p-6 border border-cyan-500/50 shadow-2xl text-center space-y-5 relative overflow-hidden">
+            <div class="w-16 h-16 bg-gradient-to-tr from-cyan-500 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl shadow-lg glow-cyan">
+                <i class="fa-solid fa-triangle-exclamation animate-bounce"></i>
+            </div>
+            
+            <div class="space-y-2">
+                <span class="text-xs font-mono font-bold text-amber-400 tracking-widest uppercase bg-amber-950/60 px-3 py-1 rounded-full border border-amber-500/40">
+                    MISSION ALERT!
+                </span>
+                <h2 class="text-xl font-extrabold text-white">MAGNET MISSION – Rescue the Metal</h2>
+                <p class="text-xs text-cyan-300 font-medium">Pengembang Game: Alya Syahrani | SMA Fase F</p>
+            </div>
+
+            <div class="bg-gray-900/80 p-4 rounded-xl border border-gray-800 text-xs text-gray-300 text-left space-y-2 leading-relaxed">
+                <p>⚠️ <strong>PERINGATAN DARURAT:</strong> Sistem elektromagnet crane pengangkat besi mengalami gangguan serius! Medan magnet yang dihasilkan terlalu lemah sehingga logam berat tidak dapat dipindahkan.</p>
+                <p>Kamu ditugaskan sebagai <strong>Magnet Engineer</strong>. Selesaikan serangkaian Misi Eksperimen AR untuk menemukan penyebabnya dan merancang kembali elektromagnet crane!</p>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="closeIntroModal()" class="w-full py-3 bg-gradient-to-r from-cyan-500 via-teal-400 to-indigo-600 hover:opacity-90 text-gray-950 font-extrabold rounded-xl shadow-xl glow-cyan tracking-wider flex items-center justify-center gap-2 transition text-sm">
+                    <i class="fa-solid fa-play text-base"></i>
+                    <span>▶ MULAI MISI</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- HINT & DIALOG MODAL -->
+    <div id="hint-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-5 border border-yellow-500/40 space-y-4">
+            <div class="flex items-center space-x-3 text-yellow-400">
+                <i class="fa-solid fa-lightbulb text-2xl"></i>
+                <h3 class="font-bold text-base text-white">PETUNJUK ENGINEER (HINT)</h3>
+            </div>
+            <p id="hint-text" class="text-xs text-gray-300 leading-relaxed bg-gray-900/80 p-3 rounded-lg border border-gray-800">
+                Gunakan Kaidah Tangan Kanan: Ibu jari menunjukkan arah kuat arus (I), empat jari yang melingkar menunjukkan arah medan magnet (B).
+            </p>
+            <button onclick="closeHintModal()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold">
+                Tutup Petunjuk
+            </button>
+        </div>
+    </div>
+
+    <!-- VICTORY / BADGE MODAL -->
+    <div id="victory-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full rounded-2xl p-6 border border-amber-500/50 text-center space-y-5 glow-amber">
+            <div class="w-20 h-20 bg-gradient-to-tr from-amber-400 to-yellow-600 rounded-full mx-auto flex items-center justify-center text-white text-4xl shadow-2xl animate-bounce">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+
+            <div class="space-y-1">
+                <span class="text-xs font-mono font-bold text-emerald-400 uppercase tracking-widest">🏆 MISSION ACCOMPLISHED!</span>
+                <h2 class="text-2xl font-black text-white">MAGNET MASTER</h2>
+                <p class="text-xs text-gray-300">Kamu telah berhasil menyelamatkan operasi crane menggunakan prinsip medan magnet!</p>
+            </div>
+
+            <div class="bg-gray-900/90 p-4 rounded-xl border border-gray-800 text-xs space-y-2 text-left">
+                <div class="flex justify-between items-center text-cyan-300 font-bold border-b border-gray-800 pb-1">
+                    <span>Lencana Diraih:</span>
+                    <span class="text-amber-400">MAGNET MASTER BADGE</span>
+                </div>
+                <div class="flex justify-between text-gray-300">
+                    <span>Total XP Akhir:</span>
+                    <span id="final-xp-val" class="font-bold text-yellow-300">525 XP</span>
+                </div>
+                <p class="text-gray-400 text-[11px] pt-1">
+                    Seluruh data penyelidikan fisika telah otomatis tercatat dalam LKPD Digital.
+                </p>
+            </div>
+
+            <div class="space-y-2">
+                <button onclick="openLkpdModal()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-file-invoice"></i> Buka & Export LKPD Digital
+                </button>
+                <button onclick="location.reload()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-xs font-semibold">
+                    Main Lagi / Reset Misi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ===================================================================
+           MAGNET MISSION - PHYSICS ENGINE & STATE MANAGEMENT
+           Developed for Alya Syahrani (SMA Fase F Magnetism)
+           =================================================================== */
+
+        // Physical Constants
+        const MU_0 = 4 * Math.PI * 1e-7; // Magnetic permeability of vacuum (T·m/A)
+
+        // Game Global State
+        const state = {
+            currentMission: 1, // 1 to 6
+            xp: 0,
+            rank: 'Junior Engineer',
+            badge: null,
+            
+            // Wire & Current parameters
+            currentI: 1.0,          // Amperes (1-10A)
+            distanceR: 0.05,        // Meters (0.01-0.20m)
+            wireDirectionUp: true,  // Current direction in wire
+
+            // Mission 1 right hand rule guess
+            m1UserGuess: null,      // 'CW' or 'CCW'
+            m1VerbalExplain: '',
+
+            // Mission 5 Solenoid parameters
+            turnsN: 200,            // Solenoid turns
+            lengthL: 0.20,          // Meters
+            solenoidI: 2.0,         // Amperes
+
+            // Unlocked representations per mission
+            unlockedReps: {
+                visual: true,
+                data: false,
+                graph: false,
+                formula: false,
+                explain: false
+            },
+
+            // LKPD Log History
+            lkpdLogs: []
+        };
+
+        // Sound Effects Engine using AudioContext
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type = 'sine', duration = 0.15) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        function playSuccessSound() {
+            playTone(523.25, 'triangle', 0.1);
+            setTimeout(() => playTone(659.25, 'triangle', 0.1), 100);
+            setTimeout(() => playTone(783.99, 'triangle', 0.25), 200);
+        }
+
+        function playFailSound() {
+            playTone(220, 'sawtooth', 0.15);
+            setTimeout(() => playTone(180, 'sawtooth', 0.25), 150);
+        }
+
+        /* ===================================================================
+           THREE.JS 3D WEB AR SIMULATED VIEWPORT ENGINE
+           =================================================================== */
+        let scene, camera, renderer, controls;
+        let wireMesh, currentArrowMesh, fieldRingsGroup, sensorMesh, solenoidMeshGroup, craneGroup, metalBeamsGroup;
+        let fieldRingLines = [];
+
+        function initThreeJS() {
+            const container = document.getElementById('ar-canvas-container');
+            const canvas = document.getElementById('three-canvas');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0e17); // Dark sci-fi lab background
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 3, 7);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0x00f3ff, 1.2);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            const pointLight = new THREE.PointLight(0xffb700, 1, 10);
+            pointLight.position.set(-3, 2, -2);
+            scene.add(pointLight);
+
+            // Grid Floor
+            const gridHelper = new THREE.GridHelper(12, 24, 0x00f3ff, 0x1f2937);
+            gridHelper.position.y = -1.5;
+            scene.add(gridHelper);
+
+            // Build Initial 3D Objects
+            build3DWireScene();
+            build3DSensor();
+            build3DSolenoid();
+            build3DCrane();
+
+            // Resize listener
+            window.addEventListener('resize', onWindowResize);
+
+            // Animation Loop
+            animate3D();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('ar-canvas-container');
+            if (!container) return;
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        /* 3D Object Generators */
+        function build3DWireScene() {
+            const wireGroup = new THREE.Group();
+            
+            // Copper Straight Wire
+            const wireGeo = new THREE.CylinderGeometry(0.08, 0.08, 5, 32);
+            const wireMat = new THREE.MeshStandardMaterial({ color: 0xb87333, metalness: 0.8, roughness: 0.2 });
+            wireMesh = new THREE.Mesh(wireGeo, wireMat);
+            wireMesh.position.y = 0.5;
+            wireGroup.add(wireMesh);
+
+            // Current Arrow Indicators
+            const arrowGeo = new THREE.ConeGeometry(0.2, 0.5, 16);
+            const arrowMat = new THREE.MeshBasicMaterial({ color: 0xffb700 });
+            currentArrowMesh = new THREE.Mesh(arrowGeo, arrowMat);
+            currentArrowMesh.position.set(0, 1.5, 0);
+            wireGroup.add(currentArrowMesh);
+
+            // Magnetic Field Rings Group
+            fieldRingsGroup = new THREE.Group();
+            createFieldRings();
+            wireGroup.add(fieldRingsGroup);
+
+            wireGroup.name = "WireScene";
+            scene.add(wireGroup);
+        }
+
+        function createFieldRings() {
+            // Remove old rings
+            while(fieldRingsGroup.children.length > 0) { 
+                fieldRingsGroup.remove(fieldRingsGroup.children[0]); 
+            }
+            fieldRingLines = [];
+
+            const radii = [0.6, 1.1, 1.6, 2.1];
+            radii.forEach((r, idx) => {
+                const curve = new THREE.EllipseCurve(0, 0, r, r, 0, 2 * Math.PI, false, 0);
+                const points = curve.getPoints(64);
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                
+                // Material opacity dependent on B field strength
+                const opacityVal = Math.min(0.9, 0.2 + (state.currentI / 10) * 0.7);
+                const material = new THREE.LineDashedMaterial({
+                    color: 0x00f3ff,
+                    dashSize: 0.2,
+                    gapSize: 0.1,
+                    linewidth: 2,
+                    transparent: true,
+                    opacity: opacityVal
+                });
+
+                const ringLine = new THREE.Line(geometry, material);
+                ringLine.computeLineDistances();
+                ringLine.rotation.x = Math.PI / 2;
+                ringLine.position.y = 0.5;
+                
+                fieldRingsGroup.add(ringLine);
+                fieldRingLines.push(ringLine);
+            });
+        }
+
+        function build3DSensor() {
+            sensorMesh = new THREE.Group();
+            
+            // Sensor Box Head
+            const boxGeo = new THREE.BoxGeometry(0.3, 0.3, 0.4);
+            const boxMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x052e16 });
+            const box = new THREE.Mesh(boxGeo, boxMat);
+            sensorMesh.add(box);
+
+            // Probe Pointer
+            const probeGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8);
+            const probeMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 });
+            const probe = new THREE.Mesh(probeGeo, probeMat);
+            probe.rotation.z = Math.PI / 2;
+            probe.position.x = -0.4;
+            sensorMesh.add(probe);
+
+            sensorMesh.position.set(1.5, 0.5, 0);
+            scene.add(sensorMesh);
+        }
+
+        function build3DSolenoid() {
+            solenoidMeshGroup = new THREE.Group();
+
+            // Iron Core
+            const coreGeo = new THREE.CylinderGeometry(0.3, 0.3, 3, 32);
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.9, roughness: 0.3 });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            core.rotation.z = Math.PI / 2;
+            solenoidMeshGroup.add(core);
+
+            // Coil geometry simulation
+            update3DSolenoidCoil();
+
+            solenoidMeshGroup.position.set(0, 0, 0);
+            solenoidMeshGroup.visible = false; // Turned on during Solenoid Missions
+            scene.add(solenoidMeshGroup);
+        }
+
+        function update3DSolenoidCoil() {
+            // Remove existing coils in group
+            for (let i = solenoidMeshGroup.children.length - 1; i >= 1; i--) {
+                solenoidMeshGroup.remove(solenoidMeshGroup.children[i]);
+            }
+
+            const coilCount = Math.min(30, Math.floor(state.turnsN / 20));
+            const len = Math.max(1.5, state.lengthL * 8);
+
+            for (let i = 0; i < coilCount; i++) {
+                const torusGeo = new THREE.TorusGeometry(0.38, 0.05, 12, 24);
+                const torusMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.7 });
+                const ring = new THREE.Mesh(torusGeo, torusMat);
+                ring.rotation.y = Math.PI / 2;
+                ring.position.x = -len/2 + (i / (coilCount - 1)) * len;
+                solenoidMeshGroup.add(ring);
+            }
+        }
+
+        function build3DCrane() {
+            craneGroup = new THREE.Group();
+
+            // Crane Support Tower
+            const towerGeo = new THREE.BoxGeometry(0.6, 4, 0.6);
+            const towerMat = new THREE.MeshStandardMaterial({ color: 0xeab308 });
+            const tower = new THREE.Mesh(towerGeo, towerMat);
+            tower.position.set(-2.5, 0.5, 0);
+            craneGroup.add(tower);
+
+            // Crane Arm
+            const armGeo = new THREE.BoxGeometry(4, 0.4, 0.5);
+            const arm = new THREE.Mesh(armGeo, towerMat);
+            arm.position.set(-1, 2.3, 0);
+            craneGroup.add(arm);
+
+            // Cable & Electromagnet Disk
+            const cableGeo = new THREE.CylinderGeometry(0.03, 0.03, 2);
+            const cableMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const cable = new THREE.Mesh(cableGeo, cableMat);
+            cable.position.set(0.5, 1.2, 0);
+            craneGroup.add(cable);
+
+            // Electromagnet Head
+            const magnetHeadGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.4, 32);
+            const magnetHeadMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x0369a1 });
+            const magnetHead = new THREE.Mesh(magnetHeadGeo, magnetHeadMat);
+            magnetHead.position.set(0.5, 0.1, 0);
+            craneGroup.add(magnetHead);
+
+            // Metal Beams to lift
+            metalBeamsGroup = new THREE.Group();
+            for(let i=0; i<3; i++) {
+                const beamGeo = new THREE.BoxGeometry(1.2, 0.25, 0.3);
+                const beamMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.8 });
+                const beam = new THREE.Mesh(beamGeo, beamMat);
+                beam.position.set(0.5 + (i*0.1), -1.2 + (i*0.26), (i*0.1));
+                metalBeamsGroup.add(beam);
+            }
+            craneGroup.add(metalBeamsGroup);
+
+            craneGroup.visible = false;
+            scene.add(craneGroup);
+        }
+
+        // Three.js Render Frame Loop
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            // Rotate field rings to show dynamic magnetic flux direction
+            if (fieldRingsGroup && fieldRingsGroup.visible) {
+                const dir = state.wireDirectionUp ? 1 : -1;
+                fieldRingsGroup.rotation.y += 0.01 * dir;
+            }
+
+            // Update sensor mesh position dynamically
+            if (sensorMesh && state.currentMission === 3) {
+                sensorMesh.position.x = state.distanceR * 15; // Scaled for 3D visual
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Camera AR Video Stream Toggle
+        let webcamStream = null;
+        async function toggleWebcam() {
+            const video = document.getElementById('webcam-video');
+            const btnText = document.getElementById('webcam-btn-text');
+            const arStatus = document.getElementById('ar-status-text');
+
+            if (webcamStream) {
+                // Turn off
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+                video.style.display = 'none';
+                btnText.textContent = 'Kamera AR';
+                arStatus.textContent = 'SIMULATED WEB-AR';
+                scene.background = new THREE.Color(0x0a0e17);
+            } else {
+                try {
+                    webcamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = webcamStream;
+                    video.style.display = 'block';
+                    btnText.textContent = 'Matikan AR';
+                    arStatus.textContent = 'LIVE WEBCAM AR';
+                    scene.background = null; // Transparent background for AR overlay
+                } catch (err) {
+                    alert('Gagal mengakses kamera. Memakai Mode Simulasi AR 3D.');
+                }
+            }
+        }
+
+        /* ===================================================================
+           PHYSICS CALCULATIONS & MULTI-REPRESENTATION MATRIX ENGINE
+           =================================================================== */
+
+        // Calculate Straight Wire Field: B = (mu_0 * I) / (2 * pi * r)
+        function calculateStraightWireB(I, r) {
+            return (MU_0 * I) / (2 * Math.PI * r); // in Tesla
+        }
+
+        // Calculate Solenoid Field: B = mu_0 * (N/L) * I
+        function calculateSolenoidB(N, L, I) {
+            return MU_0 * (N / L) * I; // in Tesla
+        }
+
+        // Formatter Tesla to microTesla (µT) or milliTesla (mT)
+        function formatBField(bTesla) {
+            if (bTesla < 1e-3) {
+                return (bTesla * 1e6).toFixed(2) + ' µT';
+            } else {
+                return (bTesla * 1e3).toFixed(2) + ' mT';
+            }
+        }
+
+        // Update HUD Values
+        function updateHUDReadings() {
+            document.getElementById('hud-current').textContent = state.currentI.toFixed(1) + ' A';
+            document.getElementById('hud-distance').textContent = state.distanceR.toFixed(2) + ' m';
+            
+            let bVal = 0;
+            if (state.currentMission <= 4) {
+                bVal = calculateStraightWireB(state.currentI, state.distanceR);
+            } else {
+                bVal = calculateSolenoidB(state.turnsN, state.lengthL, state.solenoidI);
+            }
+            document.getElementById('hud-bfield').textContent = formatBField(bVal);
+        }
+
+        /* Chart.js Multi-Representation Graph Manager */
+        let physicsChart = null;
+
+        function renderMultiRepPanel() {
+            const container = document.getElementById('multi-rep-content');
+            const title = document.getElementById('multi-rep-title');
+            
+            if (state.currentMission === 1) {
+                title.innerHTML = '<i class="fa-solid fa-hand-fist text-cyan-400"></i> Kaidah Tangan Kanan & Arah Arus';
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                        <div class="bg-gray-900/80 p-3 rounded-lg border border-gray-800">
+                            <span class="text-amber-400 font-bold block mb-1">👁️ Visual:</span>
+                            <p class="text-[11px] text-gray-300">Ibu jari = Arah Arus (I)<br>4 Jari Melingkar = Arah Medan B</p>
+                        </div>
+                        <div class="bg-gray-900/80 p-3 rounded-lg border border-gray-800">
+                            <span class="text-cyan-400 font-bold block mb-1">🧮 Simbolik:</span>
+                            <p class="font-mono text-xs text-yellow-300">I ↑  ⇒  B (Berlawanan Jarum Jam)</p>
+                            <p class="font-mono text-xs text-yellow-300">I ↓  ⇒  B (Searah Jarum Jam)</p>
+                        </div>
+                        <div class="bg-gray-900/80 p-3 rounded-lg border border-gray-800">
+                            <span class="text-emerald-400 font-bold block mb-1">💬 Verbal:</span>
+                            <p class="text-[11px] text-gray-300">Garis medan magnet di sekitar kawat membentuk lingkaran konsentris.</p>
+                        </div>
+                    </div>
+                `;
+            } else if (state.currentMission === 2 || state.currentMission === 3 || state.currentMission === 4) {
+                title.innerHTML = '<i class="fa-solid fa-chart-line text-cyan-400"></i> Multi-Representasi: Grafik & Tabel Data (B vs I, B vs r)';
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div class="bg-gray-900/90 p-2 rounded-xl border border-gray-800 h-44">
+                            <canvas id="physics-chart-canvas"></canvas>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="bg-gray-900/80 p-2.5 rounded-lg border border-gray-800 text-mono text-[11px]">
+                                <span class="text-yellow-400 font-bold">Persamaan Matematis:</span>
+                                <div class="text-cyan-300 font-mono text-xs mt-0.5">B = (µ₀ · I) / (2 · π · r)</div>
+                            </div>
+                            <div class="bg-gray-900/80 p-2.5 rounded-lg border border-gray-800 text-[11px] text-gray-300">
+                                <strong>Analisis Hubungan:</strong> Medan magnet (B) berbanding lurus dengan Arus (I) dan berbanding terbalik dengan Jarak (r).
+                            </div>
+                        </div>
+                    </div>
+                `;
+                setTimeout(initPhysicsChart, 50);
+            } else {
+                // Solenoid Missions (5 & 6)
+                title.innerHTML = '<i class="fa-solid fa-gears text-amber-400"></i> Multi-Representasi: Solenoida Elektromagnet';
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="bg-gray-900/80 p-2.5 rounded-lg border border-gray-800 text-xs">
+                            <span class="text-yellow-400 font-bold block mb-1">🧮 Formula Solenoida:</span>
+                            <span class="font-mono text-cyan-300 text-sm">B = µ₀ · (N / L) · I</span>
+                        </div>
+                        <div class="bg-gray-900/80 p-2.5 rounded-lg border border-gray-800 text-xs">
+                            <span class="text-cyan-400 font-bold block mb-1">📊 Parameter Saat Ini:</span>
+                            <div class="font-mono text-[11px] text-gray-300 space-y-0.5">
+                                <div>N = ${state.turnsN} lilitan</div>
+                                <div>L = ${state.lengthL.toFixed(2)} m</div>
+                                <div>I = ${state.solenoidI.toFixed(1)} A</div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-900/80 p-2.5 rounded-lg border border-gray-800 text-xs">
+                            <span class="text-emerald-400 font-bold block mb-1">🏗️ Output Magnet:</span>
+                            <span class="font-mono text-amber-300 text-sm font-bold">
+                                ${formatBField(calculateSolenoidB(state.turnsN, state.lengthL, state.solenoidI))}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function initPhysicsChart() {
+            const ctx = document.getElementById('physics-chart-canvas');
+            if (!ctx) return;
+
+            if (physicsChart) physicsChart.destroy();
+
+            // Prepare dataset: B vs I (at fixed r=0.05)
+            const labelsI = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            const dataB = labelsI.map(i => (calculateStraightWireB(i, state.distanceR) * 1e6).toFixed(2));
+
+            physicsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labelsI.map(i => i + 'A'),
+                    datasets: [{
+                        label: 'Medan Magnet B (µT)',
+                        data: dataB,
+                        borderColor: '#00f3ff',
+                        backgroundColor: 'rgba(0, 243, 255, 0.15)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.2,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#ffb700'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#94a3b8', font: { size: 10 } } }
+                    },
+                    scales: {
+                        x: { grid: { color: '#1f2937' }, ticks: { color: '#94a3b8', font: { size: 9 } } },
+                        y: { grid: { color: '#1f2937' }, ticks: { color: '#94a3b8', font: { size: 9 } } }
+                    }
+                }
+            });
+        }
+
+        /* ===================================================================
+           MISSION GAMEPLAY & STEPS CONTROLLER
+           =================================================================== */
+
+        function updateRepresentationBadges() {
+            const reps = ['visual', 'data', 'graph', 'formula', 'explain'];
+            reps.forEach(r => {
+                const badge = document.getElementById(`rep-${r}`);
+                if (state.unlockedReps[r]) {
+                    badge.classList.remove('opacity-50', 'bg-gray-800', 'text-gray-400');
+                    badge.classList.add('bg-cyan-900/60', 'text-cyan-300', 'border-cyan-500/50');
+                    badge.querySelector('i').className = 'fa-solid fa-check text-[10px] text-green-400';
+                } else {
+                    badge.classList.add('opacity-50', 'bg-gray-800', 'text-gray-400');
+                    badge.querySelector('i').className = 'fa-solid fa-lock text-[10px]';
+                }
+            });
+        }
+
+        function loadMission(missionNum) {
+            state.currentMission = missionNum;
+            playTone(440, 'sine', 0.1);
+
+            // Hide/Show relevant 3D Models
+            const wireScene = scene.getObjectByName("WireScene");
+            if (wireScene) wireScene.visible = (missionNum <= 4);
+            if (sensorMesh) sensorMesh.visible = (missionNum === 3);
+            if (solenoidMeshGroup) solenoidMeshGroup.visible = (missionNum === 5);
+            if (craneGroup) craneGroup.visible = (missionNum === 6);
+
+            // Reset representation locks based on mission
+            state.unlockedReps = {
+                visual: true,
+                data: missionNum >= 2,
+                graph: missionNum >= 3,
+                formula: missionNum >= 2,
+                explain: missionNum >= 4
+            };
+            updateRepresentationBadges();
+
+            const promptBox = document.getElementById('story-prompt-box');
+            const workspace = document.getElementById('gameplay-workspace');
+            const actionBtn = document.getElementById('primary-action-btn');
+            const titleEl = document.getElementById('mission-title');
+            const indicatorEl = document.getElementById('mission-step-indicator');
+
+            indicatorEl.textContent = `MISI ${missionNum}/6`;
+            hideFeedback();
+
+            switch(missionNum) {
+                case 1:
+                    titleEl.innerHTML = '🔎 MISI 1: SCAN THE MAGNETIC FIELD';
+                    promptBox.innerHTML = `
+                        <p class="font-semibold text-cyan-300 mb-1">Alya Syahrani's Challenge (C3 - Aplikasi):</p>
+                        Garis medan magnet di sekitar kawat crane belum terlihat jelas. Dapatkan garis medan AR dengan menekan tombol <strong>SCAN FIELD</strong>, lalu pilih arah medan magnet yang benar menggunakan Kaidah Tangan Kanan!
+                    `;
+                    workspace.innerHTML = `
+                        <div class="space-y-3">
+                            <label class="block text-xs font-semibold text-gray-300">Pilih Arah Medan Magnet (Kaidah Tangan Kanan ketika Arus I Ke Atas):</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="selectM1Direction('CCW')" id="btn-m1-ccw" class="p-3 rounded-xl border border-gray-700 bg-gray-900 hover:border-cyan-400 text-xs text-left transition">
+                                    <div class="font-bold text-cyan-300">🔄 Melingkar Berlawanan Jarum Jam</div>
+                                    <div class="text-[10px] text-gray-400 mt-1">Dilihat dari atas kawat</div>
+                                </button>
+                                <button onclick="selectM1Direction('CW')" id="btn-m1-cw" class="p-3 rounded-xl border border-gray-700 bg-gray-900 hover:border-cyan-400 text-xs text-left transition">
+                                    <div class="font-bold text-amber-300">🔁 Melingkar Searah Jarum Jam</div>
+                                    <div class="text-[10px] text-gray-400 mt-1">Dilihat dari atas kawat</div>
+                                </button>
+                            </div>
+
+                            <div id="m1-verbal-input-box" class="hidden space-y-1.5 pt-2 border-t border-gray-800">
+                                <label class="block text-xs font-semibold text-gray-300">💬 Tugas Verbal (Hubungan Visual → Verbal):</label>
+                                <p class="text-[11px] text-gray-400">Jika arah arus I dibalik (ke bawah), apa yang terjadi pada arah medan magnet B?</p>
+                                <input type="text" id="m1-verbal-input" class="w-full bg-gray-950 border border-gray-700 rounded-lg p-2 text-xs text-cyan-200 outline-none focus:border-cyan-400" placeholder="Contoh: Arah medan magnet akan berbalik arah...">
+                            </div>
+                        </div>
+                    `;
+                    actionBtn.innerHTML = '<span>SCAN FIELD</span> <i class="fa-solid fa-expand"></i>';
+                    break;
+
+                case 2:
+                    titleEl.innerHTML = '⚡ MISI 2: CHARGE THE ELECTROMAGNET';
+                    promptBox.innerHTML = `
+                        <p class="font-semibold text-cyan-300 mb-1">Tantangan Arus Elektromagnet (C3):</p>
+                        Crane membutuhkan medan magnet minimal <span class="text-amber-300 font-mono font-bold">B_target = 2.00 × 10⁻⁵ T (20.0 µT)</span> pada jarak r = 0.05 m. Atur slider arus (I) hingga medan magnet mencapai target!
+                    `;
+                    workspace.innerHTML = `
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-300 font-semibold">Kontrol Arus (I):</span>
+                                    <span id="slider-i-val" class="text-yellow-400 font-bold font-mono">1.0 A</span>
+                                </div>
+                                <input type="range" id="slider-i" min="1" max="10" step="0.5" value="1" oninput="onCurrentSliderChange(this.value)" class="w-full accent-cyan-400 cursor-pointer">
+                            </div>
+
+                            <!-- Magnet Power Bar Indicator -->
+                            <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-800 space-y-1.5">
+                                <div class="flex justify-between text-[11px] font-mono">
+                                    <span class="text-gray-400">MAGNET POWER GAUGE:</span>
+                                    <span id="power-gauge-text" class="text-cyan-300 font-bold">20%</span>
+                                </div>
+                                <div class="w-full bg-gray-950 h-3 rounded-full overflow-hidden p-0.5 border border-gray-800">
+                                    <div id="power-gauge-bar" class="bg-gradient-to-r from-cyan-500 to-amber-400 h-full rounded-full transition-all duration-300" style="width: 20%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    actionBtn.innerHTML = '<span>AKTIFKAN ELEKTROMAGNET</span> <i class="fa-solid fa-bolt"></i>';
+                    break;
+
+                case 3:
+                    titleEl.innerHTML = '📍 MISI 3: FIND THE SAFE DISTANCE';
+                    promptBox.innerHTML = `
+                        <p class="font-semibold text-cyan-300 mb-1">Kalibrasi Jarak Sensor (C3-C4):</p>
+                        Sensor medan magnet rusak! Dengan arus tetap <span class="text-yellow-400 font-mono">I = 5.0 A</span>, geser posisi sensor mendekati atau menjauhi kawat untuk menemukan posisi target <span class="text-cyan-300 font-mono">B = 2.00 × 10⁻⁵ T</span>!
+                    `;
+                    workspace.innerHTML = `
+                        <div class="space-y-4">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-300 font-semibold">Jarak Sensor (r):</span>
+                                    <span id="slider-r-val" class="text-teal-300 font-bold font-mono">0.15 m</span>
+                                </div>
+                                <input type="range" id="slider-r" min="0.01" max="0.20" step="0.01" value="0.15" oninput="onDistanceSliderChange(this.value)" class="w-full accent-teal-400 cursor-pointer">
+                            </div>
+
+                            <div class="bg-gray-900/90 p-3 rounded-xl border border-gray-800 flex justify-between items-center text-xs font-mono">
+                                <span class="text-gray-400">TARGET FIELDS LOCK:</span>
+                                <span id="distance-target-status" class="text-amber-400 font-bold">LOCKED: 6.67 µT</span>
+                            </div>
+                        </div>
+                    `;
+                    actionBtn.innerHTML = '<span>LOCK TARGET DISTANCE</span> <i class="fa-solid fa-crosshairs"></i>';
+                    break;
+
+                case 4:
+                    titleEl.innerHTML = '🧠 MISI 4: DATA DETECTIVE';
+                    promptBox.innerHTML = `
+                        <p class="font-semibold text-cyan-300 mb-1">Analisis Data Ruang Kontrol (C4 - Menganalisis):</p>
+                        Analisislah data hasil eksperimen medan magnet di bawah ini. Pilih hubungan konsep fisika yang paling tepat!
+                    `;
+                    workspace.innerHTML = `
+                        <div class="space-y-3">
+                            <div class="bg-gray-950 p-2.5 rounded-xl border border-gray-800 text-[11px] font-mono">
+                                <div class="text-gray-400 mb-1">Tabel Hasil Eksperimen (r = 0.05m):</div>
+                                <div class="grid grid-cols-3 gap-1 text-center font-bold text-cyan-300 border-b border-gray-800 pb-1">
+                                    <span>Percobaan</span><span>Arus I (A)</span><span>Medan B (µT)</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1 text-center text-gray-300 pt-1">
+                                    <span>1</span><span>1.0 A</span><span>4.0 µT</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1 text-center text-gray-300">
+                                    <span>2</span><span>3.0 A</span><span>12.0 µT</span>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1 text-center text-gray-300">
+                                    <span>3</span><span>5.0 A</span><span>20.0 µT</span>
+                                </div>
+                            </div>
+
+                            <label class="block text-xs font-semibold text-gray-300">Pertanyaan Analisis C4:</label>
+                            <p class="text-[11px] text-gray-400">Apa hubungan matematis antara kuat arus (I) dan medan magnet (B) berdasarkan grafik linier tersebut?</p>
+
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 p-2 bg-gray-900 rounded-lg border border-gray-800 text-xs cursor-pointer hover:border-cyan-400">
+                                    <input type="radio" name="m4-q" value="A" class="accent-cyan-400">
+                                    <span>A. B berbanding terbalik secara kuadrat terhadap I.</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2 bg-gray-900 rounded-lg border border-gray-800 text-xs cursor-pointer hover:border-cyan-400">
+                                    <input type="radio" name="m4-q" value="B" class="accent-cyan-400">
+                                    <span>B. B berbanding lurus secara linier dengan I (B ∝ I).</span>
+                                </label>
+                                <label class="flex items-center gap-2 p-2 bg-gray-900 rounded-lg border border-gray-800 text-xs cursor-pointer hover:border-cyan-400">
+                                    <input type="radio" name="m4-q" value="C" class="accent-cyan-400">
+                                    <span>C. Nilai B selalu konstan tidak peduli perubahan I.</span>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                    actionBtn.innerHTML = '<span>ANALYZE DATA</span> <i class="fa-solid fa-brain"></i>';
+                    break;
+
+                case 5:
+                    titleEl.innerHTML = '🏗️ MISI 5: BUILD THE ELECTROMAGNET';
+                    promptBox.innerHTML = `
+                        <p class="font-semibold text-cyan-300 mb-1">Rancang Solenoida Elektromagnet Crane (C5 - Mengevaluasi):</p>
+                        Rancang solenoida 3D dengan mengatur Jumlah Lilitan (N), Panjang Solenoida (L), dan Arus (I) agar menghasilkan medan magnet minimal <span class="text-amber-300 font-mono font-bold">B ≥ 12.50 mT (1.25 × 10⁻² T)</span>!
+                    `;
+                    workspace.innerHTML = `
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-300 font-semibold">Jumlah Lilitan (N):</span>
+                                    <span id="slider-n-val" class="text-amber-400 font-bold font-mono">200 Lilitan</span>
+                                </div>
+                                <input type="range" id="slider-n" min="100" max="1000" step="50" value="200" oninput="onSolenoidSliderChange()" class="w-full accent-amber-400 cursor-pointer">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-300 font-semibold">Panjang Solenoida (L):</span>
+                                    <span id="slider-l-val" class="text-teal-300 font-bold font-mono">0.20 m</span>
+                                </div>
+                                <input type="range" id="slider-l" min="0.10" max="0.50" step="0.05" value="0.20" oninput="onSolenoidSliderChange()" class="w-full accent-teal-400 cursor-pointer">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs mb-1">
+                                    <span class="text-gray-300 font-semibold">Arus Solenoida (I):</span>
+                                    <span id="slider-si-val" class="text-cyan-400 font-bold font-mono">2.0 A</span>
+                                </div>
+                                <input type="range" id="slider-si" min="1" max="10" step="0.5" value="2" oninput="onSolenoidSliderChange()" class="w-full accent-cyan-400 cursor-pointer">
+                            </div>
+
+                            <div class="bg-gray-900 p-2.5 rounded-xl border border-gray-800 text-xs font-mono flex justify-between items-center">
+                                <span class="text-gray-400">OUTPUT B SOLENOIDA:</span>
+                                <span id="solenoid-output-text" class="text-amber-300 font-bold">2.51 mT</span>
+                            </div>
+                        </div>
+                    `;
+                    actionBtn.innerHTML = '<span>TEST DESIGN POWER</span> <i class="fa-solid fa-wrench"></i>';
+                    break;
+
+                case 6:
+                    titleEl.innerHTML = '🚢 FINAL MISSION: RESCUE THE METAL';
+                    promptBox.innerHTML = `
+                        <p class="font-semibold text-amber-300 mb-1">Misi Penyelamatan Utama (C5 - Problem Solving):</p>
+                        Crane harus mengangkap 3 benda logam berat! Batas aman arus generator crane adalah <span class="text-red-400 font-bold font-mono">I_max ≤ 10.0 A</span>. Gunakan kombinasi desain solenoida teruji agar Crane aktif memindahkan logam!
+                    `;
+                    workspace.innerHTML = `
+                        <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 text-xs">
+                            <div class="font-bold text-cyan-300">Spesifikasi Aktif Crane:</div>
+                            <div class="grid grid-cols-2 gap-2 font-mono text-gray-300">
+                                <div>N = <span id="final-n-text" class="text-yellow-300">200</span> turns</div>
+                                <div>L = <span id="final-l-text" class="text-yellow-300">0.20</span> m</div>
+                                <div>I = <span id="final-i-text" class="text-yellow-300">2.0</span> A</div>
+                                <div>B = <span id="final-b-text" class="text-amber-300">2.51 mT</span></div>
+                            </div>
+                            <p class="text-[11px] text-gray-400 border-t border-gray-800 pt-1">Target Medan Magnet Daya Angkat: <strong class="text-emerald-400">B ≥ 12.50 mT</strong></p>
+                        </div>
+                    `;
+                    actionBtn.innerHTML = '<span>ACTIVATE CRANE</span> <i class="fa-solid fa-truck-pickup"></i>';
+                    break;
+            }
+
+            renderMultiRepPanel();
+            updateHUDReadings();
+        }
+
+        /* Gameplay Event Handlers */
+        function selectM1Direction(dir) {
+            state.m1UserGuess = dir;
+            document.getElementById('btn-m1-ccw').className = `p-3 rounded-xl border text-xs text-left transition ${dir === 'CCW' ? 'border-cyan-400 bg-cyan-950/60' : 'border-gray-700 bg-gray-900'}`;
+            document.getElementById('btn-m1-cw').className = `p-3 rounded-xl border text-xs text-left transition ${dir === 'CW' ? 'border-amber-400 bg-amber-950/60' : 'border-gray-700 bg-gray-900'}`;
+            playTone(500, 'sine', 0.05);
+        }
+
+        function onCurrentSliderChange(val) {
+            state.currentI = parseFloat(val);
+            document.getElementById('slider-i-val').textContent = state.currentI.toFixed(1) + ' A';
+            
+            // Update power gauge
+            const bVal = calculateStraightWireB(state.currentI, 0.05);
+            const targetB = 2.0e-5;
+            const pct = Math.min(100, Math.round((bVal / targetB) * 100));
+            document.getElementById('power-gauge-text').textContent = pct + '%';
+            document.getElementById('power-gauge-bar').style.width = pct + '%';
+
+            createFieldRings(); // update field visual
+            updateHUDReadings();
+            renderMultiRepPanel();
+        }
+
+        function onDistanceSliderChange(val) {
+            state.distanceR = parseFloat(val);
+            document.getElementById('slider-r-val').textContent = state.distanceR.toFixed(2) + ' m';
+            
+            const bVal = calculateStraightWireB(state.currentI, state.distanceR);
+            const targetStatus = document.getElementById('distance-target-status');
+            targetStatus.textContent = (Math.abs(bVal - 2.0e-5) < 1e-6) ? '🎯 TARGET LOCKED!' : `FIELD: ${formatBField(bVal)}`;
+            
+            updateHUDReadings();
+            renderMultiRepPanel();
+        }
+
+        function onSolenoidSliderChange() {
+            const n = parseInt(document.getElementById('slider-n').value);
+            const l = parseFloat(document.getElementById('slider-l').value);
+            const i = parseFloat(document.getElementById('slider-si').value);
+
+            state.turnsN = n;
+            state.lengthL = l;
+            state.solenoidI = i;
+
+            document.getElementById('slider-n-val').textContent = n + ' Lilitan';
+            document.getElementById('slider-l-val').textContent = l.toFixed(2) + ' m';
+            document.getElementById('slider-si-val').textContent = i.toFixed(1) + ' A';
+
+            const bVal = calculateSolenoidB(n, l, i);
+            document.getElementById('solenoid-output-text').textContent = formatBField(bVal);
+
+            update3DSolenoidCoil();
+            updateHUDReadings();
+            renderMultiRepPanel();
+        }
+
+        /* Primary Action Button Handler per Mission */
+        function handlePrimaryAction() {
+            if (state.currentMission === 1) {
+                // Mission 1 logic
+                const verbalInputBox = document.getElementById('m1-verbal-input-box');
+                if (verbalInputBox.classList.contains('hidden')) {
+                    // Step 1: Scan Field pressed
+                    playSuccessSound();
+                    showFeedback('✅ FIELD DETECTED! Garis medan magnet lingkaran konsentris sekarang terlihat di AR viewer.', 'success');
+                    verbalInputBox.classList.remove('hidden');
+                    document.getElementById('primary-action-btn').innerHTML = '<span>KONFIRMASI KAIDAH</span> <i class="fa-solid fa-check"></i>';
+                } else {
+                    // Step 2: Validate guess and verbal explain
+                    if (state.m1UserGuess === 'CCW') {
+                        const verbalText = document.getElementById('m1-verbal-input').value.trim();
+                        state.m1VerbalExplain = verbalText || 'Arah medan magnet berbalik menjadi searah jarum jam.';
+                        
+                        addXP(50);
+                        playSuccessSound();
+                        showFeedback('✅ CORRECT! +50 XP. Kaidah Tangan Kanan berhasil terkonfirmasi.', 'success');
+                        
+                        // Record to LKPD
+                        document.getElementById('lkpd-m1-verbal').textContent = state.m1VerbalExplain;
+
+                        setTimeout(() => loadMission(2), 1500);
+                    } else {
+                        playFailSound();
+                        showFeedback('⚠️ Arah medan belum tepat. Gunakan Kaidah Tangan Kanan (ibu jari ke atas, 4 jari melingkar ke kiri/CCW) dan coba lagi.', 'error');
+                    }
+                }
+            } else if (state.currentMission === 2) {
+                // Mission 2 logic
+                const bVal = calculateStraightWireB(state.currentI, 0.05);
+                if (Math.abs(bVal - 2.0e-5) < 1e-6) {
+                    addXP(100);
+                    playSuccessSound();
+                    showFeedback('⚡ ELECTROMAGNET ACTIVATED! +100 XP. Kuat arus I = 5.0 A menghasilkan B = 20.0 µT.', 'success');
+                    
+                    // Log to LKPD
+                    logLkpdRow(1, state.currentI, 0.05, bVal, 'TARGET REACHED');
+
+                    setTimeout(() => loadMission(3), 1500);
+                } else {
+                    playFailSound();
+                    showFeedback(`⚠️ Arus belum tepat. Medan magnet saat ini ${formatBField(bVal)}. Targetnya adalah 20.0 µT!`, 'error');
+                }
+            } else if (state.currentMission === 3) {
+                // Mission 3 logic
+                const bVal = calculateStraightWireB(5.0, state.distanceR);
+                if (Math.abs(bVal - 2.0e-5) < 1.5e-6) {
+                    addXP(100);
+                    playSuccessSound();
+                    showFeedback('🎯 TARGET LOCKED! +100 XP. Posisi sensor r = 0.05 m terdeteksi akurat.', 'success');
+                    
+                    logLkpdRow(2, 5.0, state.distanceR, bVal, 'DISTANCE LOCKED');
+
+                    setTimeout(() => loadMission(4), 1500);
+                } else {
+                    playFailSound();
+                    showFeedback(`⚠️ Posisi sensor belum pas. Nilai B = ${formatBField(bVal)}. Pindahkan sensor ke jarak sekitar 0.05 m!`, 'error');
+                }
+            } else if (state.currentMission === 4) {
+                // Mission 4 logic
+                const selected = document.querySelector('input[name="m4-q"]:checked');
+                if (selected && selected.value === 'B') {
+                    addXP(100);
+                    playSuccessSound();
+                    showFeedback('🧠 DATA ANALYZED! +100 XP. Benar, B berbanding lurus dengan I.', 'success');
+                    setTimeout(() => loadMission(5), 1500);
+                } else {
+                    playFailSound();
+                    showFeedback('⚠️ Analisis belum tepat. Amati grafik linier B terhadap I pada panel multi-representasi!', 'error');
+                }
+            } else if (state.currentMission === 5) {
+                // Mission 5 logic
+                const bVal = calculateSolenoidB(state.turnsN, state.lengthL, state.solenoidI);
+                if (bVal >= 12.5e-3) {
+                    addXP(100);
+                    playSuccessSound();
+                    showFeedback(`🏗️ SOLENOID DESIGN APPROVED! +100 XP. B = ${formatBField(bVal)} memenuhi target.`, 'success');
+                    
+                    document.getElementById('lkpd-solenoid-summary').textContent = 
+                        `Desain Terpilih: N = ${state.turnsN} lilitan, L = ${state.lengthL}m, I = ${state.solenoidI}A ==> B = ${formatBField(bVal)}`;
+
+                    setTimeout(() => loadMission(6), 1500);
+                } else {
+                    playFailSound();
+                    showFeedback(`⚠️ Medan magnet solenoida (${formatBField(bVal)}) belum mencapai target minimal 12.50 mT. Naikkan N atau I!`, 'error');
+                }
+            } else if (state.currentMission === 6) {
+                // Final Crane Rescue logic
+                const bVal = calculateSolenoidB(state.turnsN, state.lengthL, state.solenoidI);
+                if (bVal >= 12.5e-3 && state.solenoidI <= 10.0) {
+                    addXP(100);
+                    playSuccessSound();
+                    
+                    // Animate Crane Lift
+                    if (metalBeamsGroup) {
+                        let liftY = -1.2;
+                        const interval = setInterval(() => {
+                            liftY += 0.05;
+                            metalBeamsGroup.position.y = liftY;
+                            if (liftY >= 0.8) {
+                                clearInterval(interval);
+                                showVictoryModal();
+                            }
+                        }, 50);
+                    } else {
+                        showVictoryModal();
+                    }
+                } else {
+                    playFailSound();
+                    showFeedback('⚠️ Sistem Crane gagal mengangkat logam! Pastikan B ≥ 12.5 mT dan arus I ≤ 10 A.', 'error');
+                }
+            }
+        }
+
+        /* Helper Feedback Alert Box */
+        function showFeedback(msg, type) {
+            const fb = document.getElementById('feedback-alert');
+            fb.classList.remove('hidden', 'bg-emerald-950/80', 'border-emerald-500/50', 'text-emerald-200', 'bg-rose-950/80', 'border-rose-500/50', 'text-rose-200');
+            if (type === 'success') {
+                fb.classList.add('bg-emerald-950/80', 'border-emerald-500/50', 'text-emerald-200');
+            } else {
+                fb.classList.add('bg-rose-950/80', 'border-rose-500/50', 'text-rose-200');
+            }
+            fb.innerHTML = msg;
+        }
+
+        function hideFeedback() {
+            document.getElementById('feedback-alert').classList.add('hidden');
+        }
+
+        /* XP & Rank Management */
+        function addXP(points) {
+            state.xp += points;
+            document.getElementById('player-xp').textContent = state.xp;
+            
+            // Rank updates
+            if (state.xp >= 400) {
+                state.rank = 'MAGNET MASTER';
+            } else if (state.xp >= 200) {
+                state.rank = 'Senior Engineer';
+            }
+            document.getElementById('player-rank').textContent = state.rank;
+            document.getElementById('lkpd-total-xp').textContent = state.xp + ' XP';
+        }
+
+        function logLkpdRow(expNo, iVal, rVal, bVal, status) {
+            const tbody = document.getElementById('lkpd-table-body');
+            const row = document.createElement('tr');
+            row.className = 'border-b border-gray-800';
+            row.innerHTML = `
+                <td class="p-2 border border-gray-700">${expNo}</td>
+                <td class="p-2 border border-gray-700">${iVal.toFixed(1)} A</td>
+                <td class="p-2 border border-gray-700">${rVal.toFixed(2)} m</td>
+                <td class="p-2 border border-gray-700">${formatBField(bVal)}</td>
+                <td class="p-2 border border-gray-700 text-emerald-400 font-bold">${status}</td>
+            `;
+            tbody.appendChild(row);
+        }
+
+        /* Modals Control */
+        function closeIntroModal() {
+            document.getElementById('intro-modal').classList.add('hidden');
+            playTone(600, 'sine', 0.1);
+        }
+
+        function openLkpdModal() {
+            document.getElementById('lkpd-date').textContent = new Date().toLocaleDateString('id-ID');
+            document.getElementById('lkpd-modal').classList.remove('hidden');
+        }
+
+        function closeLkpdModal() {
+            document.getElementById('lkpd-modal').classList.add('hidden');
+        }
+
+        function showHintModal() {
+            const hintText = document.getElementById('hint-text');
+            if (state.currentMission === 1) {
+                hintText.innerHTML = "Gunakan Kaidah Tangan Kanan: Ibu jari tangan kanan menunjuk arah arus listrik (I ke atas), maka arah empat jari yang melingkar menunjukkan arah garis medan magnet (B).";
+            } else if (state.currentMission === 2) {
+                hintText.innerHTML = "Rumus: B = (µ₀ · I) / (2 · π · r). Dengan r = 0.05m dan target B = 20.0 µT, coba set arus I = 5.0 A.";
+            } else if (state.currentMission === 3) {
+                hintText.innerHTML = "Jarak r berbanding terbalik dengan B. Semakin dekat sensor ke kawat (r mengecil), nilai B akan semakin besar.";
+            } else if (state.currentMission === 4) {
+                hintText.innerHTML = "Perhatikan grafik B terhadap I pada panel multi-representasi: Saat I naik secara teratur, B juga naik secara proporsional linier.";
+            } else if (state.currentMission === 5 || state.currentMission === 6) {
+                hintText.innerHTML = "Persamaan Solenoida: B = µ₀ · (N/L) · I. Untuk menaikkan B, kamu bisa memperbesar N (lilitan) atau Arus (I), atau memperpendek L.";
+            }
+            document.getElementById('hint-modal').classList.remove('hidden');
+        }
+
+        function closeHintModal() {
+            document.getElementById('hint-modal').classList.add('hidden');
+        }
+
+        function showVictoryModal() {
+            document.getElementById('final-xp-val').textContent = state.xp + ' XP';
+            document.getElementById('victory-modal').classList.remove('hidden');
+            playSuccessSound();
+        }
+
+        /* Window Onload Initialization */
+        window.onload = function() {
+            initThreeJS();
+            loadMission(1);
+        };
+
+    </script>
+</body>
+</html>
